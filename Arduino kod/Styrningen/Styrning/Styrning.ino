@@ -16,7 +16,7 @@
 double StartTime;
 double ElapsedTime;
 
-double Frequency = 2;          // Hertz
+double Frequency = 200;          // Hertz
 double Ts = 1/Frequency; // Seconds!  
 
 // ActionTypes and input
@@ -87,7 +87,7 @@ void measureFunc(){
 
 void posSensorFunc(){
   int tmp = analogRead(PosSensorIn);
-  Position = 135*tmp/1024
+  Position = tmp/8.0;
   Serial.print("Position: ");
   Serial.print(Position);
   Serial.print(" mm, Bit: ");
