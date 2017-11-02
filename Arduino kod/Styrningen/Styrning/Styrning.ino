@@ -19,17 +19,22 @@ double ElapsedTime; //Frequency control
 double Frequency = 200;          // Hertz
 double Ts = 1/Frequency; // Seconds!  
 
-// Sensorvariables
+// position variables
 double Position = 0; //[mm] Positon will be updated with sensordata
 double Position1 = 0; //[mm] Piston is fully retracted
 double Position2 = 10; // [mm] Neutral
 double Position3 = 20; // [mm] Piston is fully extracted
 double RefPosition = 0; // [mm] Is updated whith command
+double PositionError = 0; // [mm] RefPosition - Position, thats the position error.
+double PositionErrorThreshold = 1; // [mm] Position error Threshold for stopping the positioncontroller.
+boolean PositionSwitch = false; // Determines if cylinder will be actuated.
+
+// Pressure variables
 double Pressure = 0; // [Bar] Is updated with sensordata
 long LowPressure = 45; //[Bar] Pump starts at this pressure
 long HighPressure = 60; //[Bar] Pump stops at this pressure
 
-//boolean variables for control
+// Motor variables!
 boolean MotorOn = false; //Determines if the motorrelay should be on/off
 
 
@@ -59,11 +64,14 @@ void loop() {
 
   // Measurements
   measureFunc();
+
   // Calculations
+  calculation();
   
   // Actions
   action();
 
+  // Frequency function
   delayFunc();
 }
 
@@ -79,7 +87,7 @@ void delayFunc(){
   }
 }
 
-// Todo (Takes input from user)
+// Todo
 void listenFunc(){
   String ReadString = "";
   while (Serial.available())
@@ -95,14 +103,17 @@ void listenFunc(){
     if (ReadString[1] == '1')
     {
       RefPosition = Position1;
+      PositionSwitch = true;
     }
     else if (ReadString[1] == '2')
     {
       RefPosition = Position2;
+      PositionSwitch = true;
     }
     else if (ReadString[1] == '3')
     {
       RefPosition = Position3;
+      PositionSwitch = true;
     }
     Serial.print("Refposition: ");
     Serial.println(RefPosition);
@@ -146,9 +157,16 @@ void listenFunc(){
   
 }
 
+// Makes calculations like filtering off signals and calculations of errors.
+void calculation()
+{
+  PositionError = RefPosition - Position;
+}
+
 //Todo (executes commands based on input and controllers)
 void action(){
   engineControl();
+  positionControl();
 }
 
 //Turns on/off the relay to control the pump based on pressure sensor data.
@@ -171,6 +189,34 @@ void engineControl()
     }
   }
   
+}
+
+void positionControl()
+{
+  if (PositionSwitch)
+  {
+    digitalWrite(Solenoid1Out, HIGH); // Open from the accumulator!
+    if(abs(PositionError) < PositionErrorThreshold)
+    {
+      PositionSwitch = false;
+      // Close all valves!
+      digitalWrite(Solenoid2Out, LOW);  
+      digitalWrite(Solenoid3Out, LOW);
+      digitalWrite(Solenoid1Out, LOW);
+    }
+    else if (PositionError < 0)
+    {
+      // Pressure on minusside
+      digitalWrite(Solenoid3Out, LOW);
+      digitalWrite(Solenoid2Out, HIGH);
+    }
+    else if(PositionError > 0)
+    {
+      // Pressure on plusside
+      digitalWrite(Solenoid2Out, LOW);
+      digitalWrite(Solenoid3Out, HIGH);
+    }
+  }
 }
 
 //Reads and stores inputs from sensors
