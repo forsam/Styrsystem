@@ -22,11 +22,11 @@ double Ts = 1/Frequency; // Seconds!
 // position variables
 double Position = 0; //[mm] Positon will be updated with sensordata
 double Position1 = 0; //[mm] Piston is fully retracted
-double Position2 = 10; // [mm] Neutral
-double Position3 = 20; // [mm] Piston is fully extracted
+double Position2 = 30; // [mm] Neutral
+double Position3 = 60; // [mm] Piston is fully extracted
 double RefPosition = 0; // [mm] Is updated whith command
 double PositionError = 0; // [mm] RefPosition - Position, thats the position error.
-double PositionErrorThreshold = 1; // [mm] Position error Threshold for stopping the positioncontroller.
+double PositionErrorThreshold = 3; // [mm] Position error Threshold for stopping the positioncontroller.
 boolean PositionSwitch = false; // Determines if cylinder will be actuated.
 
 // Pressure variables
@@ -51,6 +51,7 @@ void setup() {
 
   // Attach all the Output pins
   pinMode(Solenoid1Out,OUTPUT);
+  digitalWrite(Solenoid1Out, LOW); // Solenoid 1 off.
   pinMode(Solenoid2Out,OUTPUT);
   pinMode(Solenoid3Out,OUTPUT);
   pinMode(EngineRelay,OUTPUT);
@@ -85,6 +86,10 @@ void delayFunc(){
   {
     delay(Ts*1000 - ElapsedTime);
   }
+  else
+  {
+    
+  }
 }
 
 // Todo
@@ -98,6 +103,21 @@ void listenFunc(){
       ReadString += C;
     }
   }
+
+  if (ReadString[0] == 'V' && ReadString.length() == 2)
+  {
+    if (ReadString[1] == '0')
+    {
+      digitalWrite(Solenoid1Out, LOW);
+      Serial.println("SOLENOID OFF");
+    }
+    if (ReadString[1] == '1')
+    {
+      digitalWrite(Solenoid1Out, HIGH);
+      Serial.println("SOLENOID ON");
+    }
+  }
+  
   if (ReadString[0] == 'C' && ReadString.length() == 2)
   {
     if (ReadString[1] == '1')
@@ -222,22 +242,22 @@ void positionControl()
 //Reads and stores inputs from sensors
 void measureFunc(){
   posSensorFunc();
-  pressureSensorFunc();  
+  pressureSensorFunc();
 }
 
 //Reads the positonssensor and translates it into a position
 void posSensorFunc(){
   int tmp = analogRead(PosSensorIn);
   Position = tmp/8.0;
-  /*
+ /*
   Serial.print("Position: ");
   Serial.print(Position);
-  Serial.print(" mm, Bit: ");
-  Serial.println(tmp);
+  Serial.print("mm, PositionError: ");
+  Serial.println(abs(PositionError));
   */
 }
 
 void pressureSensorFunc(){
-  int tmp analogRead(PressureSensorIn);
-  Pressure = tmp;
+  //int tmp = analogRead(PressureSensorIn);
+  //Pressure = tmp;
 } 
