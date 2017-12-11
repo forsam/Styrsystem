@@ -16,18 +16,20 @@
 double StartTime; //used for frequency control
 double ElapsedTime; //Frequency control
 
-double Frequency = 200;          // Hertz
+double Frequency = 200;          // Hertz, vanligtvis 200 HZ!
 double Ts = 1/Frequency; // Seconds!  
 
 // position variables
 double Position = 0; //[mm] Positon will be updated with sensordata
-double Position1 = 0; //[mm] Piston is fully retracted
-double Position2 = 30; // [mm] Neutral
-double Position3 = 60; // [mm] Piston is fully extracted
+double Position1 = 39; //[mm] Piston is fully retracted
+double Position2 = Position1 + 11; // [mm] Neutral
+double Position3 = Position1 + 22; // [mm] Piston is fully extracted
 double RefPosition = 0; // [mm] Is updated whith command
 double PositionError = 0; // [mm] RefPosition - Position, thats the position error.
-double PositionErrorThreshold = 3; // [mm] Position error Threshold for stopping the positioncontroller.
+double PositionErrorThreshold = 2; // [mm] Position error Threshold for stopping the positioncontroller.
 boolean PositionSwitch = false; // Determines if cylinder will be actuated.
+double gearshiftingStart = 0;
+double gearshiftingTime;
 
 // Pressure variables
 double Pressure = 0; // [Bar] Is updated with sensordata
@@ -53,8 +55,11 @@ void setup() {
   pinMode(Solenoid1Out,OUTPUT);
   digitalWrite(Solenoid1Out, LOW); // Solenoid 1 off.
   pinMode(Solenoid2Out,OUTPUT);
+  digitalWrite(Solenoid2Out, LOW);
   pinMode(Solenoid3Out,OUTPUT);
+  digitalWrite(Solenoid3Out, LOW);
   pinMode(EngineRelay,OUTPUT);
+  digitalWrite(EngineRelay, LOW);
 }
 
 void loop() {
@@ -74,6 +79,7 @@ void loop() {
 
   // Frequency function
   delayFunc();
+
 }
 
 // ------------------------------------------------------- //
@@ -124,16 +130,19 @@ void listenFunc(){
     {
       RefPosition = Position1;
       PositionSwitch = true;
+      gearshiftingStart = millis();
     }
     else if (ReadString[1] == '2')
     {
       RefPosition = Position2;
       PositionSwitch = true;
+      gearshiftingStart = millis();
     }
     else if (ReadString[1] == '3')
     {
       RefPosition = Position3;
       PositionSwitch = true;
+      gearshiftingStart = millis();
     }
     Serial.print("Refposition: ");
     Serial.println(RefPosition);
@@ -223,6 +232,10 @@ void positionControl()
       digitalWrite(Solenoid2Out, LOW);  
       digitalWrite(Solenoid3Out, LOW);
       digitalWrite(Solenoid1Out, LOW);
+      gearshiftingTime = millis() - gearshiftingStart;
+      Serial.println(gearshiftingTime);
+      delay(200);
+      Serial.println(Position);
     }
     else if (PositionError < 0)
     {
@@ -249,9 +262,11 @@ void measureFunc(){
 void posSensorFunc(){
   int tmp = analogRead(PosSensorIn);
   Position = tmp/8.0;
- /*
+  /*
   Serial.print("Position: ");
-  Serial.print(Position);
+  Serial.println(Position);
+  */
+  /*
   Serial.print("mm, PositionError: ");
   Serial.println(abs(PositionError));
   */
