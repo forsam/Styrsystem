@@ -23,10 +23,10 @@ double Ts = 1/Frequency; // Seconds!
 double Position = 0; //[mm] Positon will be updated with sensordata
 double Position1 = 39; //[mm] Piston is fully retracted
 double Position2 = Position1 + 11; // [mm] Neutral
-double Position3 = Position1 + 22; // [mm] Piston is fully extracted
+double Position3 = Position1 + 23; // [mm] Piston is fully extracted
 double RefPosition = 0; // [mm] Is updated whith command
 double PositionError = 0; // [mm] RefPosition - Position, thats the position error.
-double PositionErrorThreshold = 2; // [mm] Position error Threshold for stopping the positioncontroller.
+double PositionErrorThreshold = 6; // [mm] Position error Threshold for stopping the positioncontroller.
 boolean PositionSwitch = false; // Determines if cylinder will be actuated.
 double gearshiftingStart = 0;
 double gearshiftingTime;
@@ -39,6 +39,12 @@ long HighPressure = 60; //[Bar] Pump stops at this pressure
 // Motor variables!
 boolean MotorOn = false; //Determines if the motorrelay should be on/off
 
+// Testprogram variables!
+boolean Testing = false;
+double TestTime = 0;
+int NextGearPosition = 1;
+int GearShiftingPeriod = 2;
+double TestingTime = 100;
 
 void setup() {
   // Start the Serial connection!
@@ -65,6 +71,39 @@ void setup() {
 void loop() {
   StartTime = millis();
 
+  if(Testing)
+  {
+    TestTime = TestTime + Ts;
+    if(TestTime > GearShiftingPeriod-0.005 && TestTime < GearShiftingPeriod+0.005)
+    {
+      GearShiftingPeriod = GearShiftingPeriod + 2;
+      if(NextGearPosition == 1)
+      {
+        PositionErrorThreshold = 5;
+        RefPosition = Position1;
+        PositionSwitch = true;
+        gearshiftingStart = millis(); 
+        NextGearPosition = 2;
+      }
+      else if(NextGearPosition == 2)
+      {
+        PositionErrorThreshold = 7;
+        RefPosition = Position2;
+        PositionSwitch = true;
+        gearshiftingStart = millis();
+        NextGearPosition = 1;   
+      }
+      else if(NextGearPosition == 3)
+      {
+        PositionErrorThreshold = 7.5;
+        RefPosition = Position3;
+        PositionSwitch = true;
+        gearshiftingStart = millis();
+        NextGearPosition = 2;   
+      }
+    }
+  }
+  
   // Listen for inputs
   listenFunc();
 
@@ -123,6 +162,18 @@ void listenFunc(){
       Serial.println("SOLENOID ON");
     }
   }
+
+  if (ReadString[0] == 'S' && ReadString.length() == 5)
+  {
+    if (ReadString[1] == 't')
+    {
+      Testing = true;
+      TestTime = 0;
+      RefPosition = Position2;
+      PositionSwitch = true;
+      gearshiftingStart = millis();
+    }
+  }
   
   if (ReadString[0] == 'C' && ReadString.length() == 2)
   {
@@ -144,8 +195,6 @@ void listenFunc(){
       PositionSwitch = true;
       gearshiftingStart = millis();
     }
-    Serial.print("Refposition: ");
-    Serial.println(RefPosition);
   }
   else if (ReadString[0] == 'P' && ReadString.length() == 4)
   {
@@ -233,9 +282,30 @@ void positionControl()
       digitalWrite(Solenoid3Out, LOW);
       digitalWrite(Solenoid1Out, LOW);
       gearshiftingTime = millis() - gearshiftingStart;
+      
+      Serial.print("GearShift: ");
+      if(RefPosition == Position1)
+      {
+        Serial.println("Gear 1");
+      }
+      else if(RefPosition == Position2)
+      {
+        Serial.println("Neutral");
+      }
+      else if(RefPosition == Position3)
+      {
+        Serial.println("Gear 2");
+      }
+      Serial.print("\t Gearshiftingtime: ");
       Serial.println(gearshiftingTime);
       delay(200);
+      measureFunc();
+      Serial.print("\t PositionError: ");
+      Serial.println(RefPosition - Position);
+      Serial.print("\t Position: ");
       Serial.println(Position);
+      Serial.println("-----");
+      
     }
     else if (PositionError < 0)
     {
@@ -262,14 +332,23 @@ void measureFunc(){
 void posSensorFunc(){
   int tmp = analogRead(PosSensorIn);
   Position = tmp/8.0;
-  /*
-  Serial.print("Position: ");
-  Serial.println(Position);
-  */
-  /*
-  Serial.print("mm, PositionError: ");
-  Serial.println(abs(PositionError));
-  */
+  if(TestTime < TestingTime && Testing == true)
+  {
+    /*Serial.print(Position);
+    Serial.print(",");
+    Serial.print(RefPosition);
+    Serial.print(",");
+    Serial.print(PositionSwitch);
+    Serial.print(",");
+    Serial.print(TestTime);
+    Serial.print(",");
+    Serial.println(GearShiftingPeriod);
+    */
+  }
+  else
+  {
+    Testing = false;  
+  }
 }
 
 void pressureSensorFunc(){
